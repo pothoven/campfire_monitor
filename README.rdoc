@@ -1,0 +1,7 @@
+== Synopsis
+Program to monitor a campfire chat room
+
+Modified from code provided at: [link:http://www.snailbyte.com/2007/09/13/campfire-activity-notifier-for-kde/]
+
+== Usage
+ campfireMonitor [roomName] [roomName] ...
