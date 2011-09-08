@@ -3,5 +3,18 @@ Program to monitor a campfire chat room
 
 Modified from code provided at: [link:http://www.snailbyte.com/2007/09/13/campfire-activity-notifier-for-kde/]
 
+== Setup
+
+Update the following lines in the Ruby script based on your campfire account:
+
+ # default settings
+ campfireSubdomain = 'mySubdomain'
+ campfireUsername = 'user@email.com'
+ campfirePassword = 'password'
+ roomNames = ['Room1', 'Room2']
+
 == Usage
+
+Run the script specifying the room(s) to monitor.
+
  campfireMonitor [roomName] [roomName] ...
