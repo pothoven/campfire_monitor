@@ -15,13 +15,12 @@ require 'tinder'
 require "cgi"
 
 class App
-  VERSION = '0.1.1'
+  VERSION = '0.2.0'
 
   def initialize arguments, stdin
     # default settings
     campfireSubdomain = 'mySubdomain'
-    campfireUsername = 'user@email.com'
-    campfirePassword = 'password'
+    campfireToken = 'a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1'
     roomNames = ['Room1', 'Room2']
     if arguments.length > 0
       roomNames = arguments
@@ -36,30 +35,27 @@ class App
       # for OSX setup Growl
       require 'growl'
       @ui = 'mac'
-      @campfireIconPath = 'campfireMonitor.icns'
-      @growl = Growl::Notifier.sharedInstance
-      @growl.delegate = self
-      @growl.register('CampfireMonitor', ['Foo'], nil, OSX::NSImage.alloc.initByReferencingFile(@campfireIconPath))
+      @campfireIconPath = File.join File.expand_path(File.dirname(__FILE__)), 'campfireMonitor.png'
     elsif RUBY_PLATFORM =~ /linux/
       # for Linux default to Gnome and use MPlayer for audio
       @ui = 'gnome'
-      @campfireIconPath = '~/Sites/campfireMonitor/campfire-logo.png'
+      @campfireIconPath = File.join File.expand_path(File.dirname(__FILE__)), 'campfire-logo.png'
       @soundCommand = 'mplayer /usr/share/sounds/pop.wav'
     elsif RUBY_PLATFORM =~ /mswin/
       @ui = 'windows'
     end
 
 
-    @campfire = Tinder::Campfire.new campfireSubdomain
-    if @campfire.login campfireUsername, campfirePassword
-      alert nil, "CampfireMonitor", "Successfully logged in #{campfireUsername}"
+    @campfire = Tinder::Campfire.new campfireSubdomain, :token => campfireToken
+    if @campfire.present?
+      alert nil, "CampfireMonitor", "Successfully logged in #{campfireSubdomain}"
       @rooms = roomNames.collect { |roomName| @campfire.find_room_by_name roomName }
       # remove any invalid rooms
       @rooms.delete(nil);
       @rooms.each do |room|
         notify room, "CampfireMonitor", "Entered room."
         notify room, "CampfireMonitor", "Topic is: #{room.topic}.".gsub("'","")
-        notify room, "CampfireMonitor", "Current users are:  #{room.users}.".gsub("'","")
+        notify room, "CampfireMonitor", "Current users are:  #{room.users.collect { |user| user.name}.join(', ')}."
       end
     else
       alert nil, "CampfireMonitor", "Failed to log in #{campfireUsername}"
@@ -75,7 +71,7 @@ class App
       elsif @ui == 'gnome'
         system "notify-send -i #{@campfireIconPath} '#{user}' '#{'<a href="'+@campfire.uri.to_s+'/room/'+room.id+'">'+room.name+'</a>: ' unless room.nil?} #{msg}'"
       elsif @ui == 'mac'
-        @growl.notify('Foo', "#{room.name+':' unless room.nil?}#{user}", msg, :icon => OSX::NSImage.imageNamed(@campfireIconPath) )
+        Growl.notify "#{user}: #{msg}", :title => "#{room.name unless room.nil?}", :icon => @campfireIconPath
       else
         puts "#{room.name+':' unless room.nil?}#{user} - #{msg}"
       end
@@ -92,9 +88,9 @@ class App
 
   def run
     # first get any missed messages for today
-    threads = []
+    # threads = []
     @rooms.each do |room|
-      thread = Thread.new do
+      # thread = Thread.new do
         begin
           room.transcript(Date.today).last(3).each do |m|
             if !m.nil? and m[:message] and m[:message].size > 1
@@ -104,31 +100,31 @@ class App
         rescue
           notify room, "CampfireMonitor", "Could not process transcript"
         end
-      end
-      threads << thread
+      # end
+      # threads << thread
     end
-    threads.each { |thread| thread.join}
+    # threads.each { |thread| thread.join}
 
     # listen for more messages
-    threads = []
+    # threads = []
     @rooms.each do |room|
-      thread = Thread.new(room) do |room|
+      # thread = Thread.new(room) do |room|
         begin
           notify room, "CampfireMonitor", "Waiting for messages..."
           room.listen do |m|
-            if !m.nil? and m[:message].size > 1
-              unless m[:person] == "Ad"
-                alert room, m[:person], m[:message].gsub("'","")
+            if !m.nil? and m[:body].size > 1
+              unless m[:user][:name] == "Ad"
+                alert room, m[:user][:name], m[:body].gsub("'","")
               end
             end
           end
         rescue
           notify room, "CampfireMonitor", "Problem starting monitor: " + $!
         end
-      end
-      threads << thread
+      # end
+      # threads << thread
     end
-    threads.each { |thread| thread.join}
+    # threads.each { |thread| thread.join}
 
   end
 end
